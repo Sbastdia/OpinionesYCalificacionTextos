@@ -21,7 +21,7 @@
 import pandas as pnd
 mensajesTwitter = pnd.read_csv("datas/calentamientoClimatico.csv", delimiter=";")
 
-import nltk #me da error en nltk(ya instalado en mayúsculas y minúsculas)
+import nltk
 nltk.download('stopwords')
 nltk.download('wordnet')
 
