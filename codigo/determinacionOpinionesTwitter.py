@@ -16,7 +16,7 @@ from sklearn.model_selection import GridSearchCV
 class Determinacion:
 
     def __init__(self):
-            self.mensajesTwitter=pnd.read_csv("datas/calentamientoClimatico.csv", delimiter=";")
+        self.mensajesTwitter=pnd.read_csv("datas/calentamientoClimatico.csv", delimiter=";")
 
     #Carga del archivo
 
@@ -43,6 +43,7 @@ class Determinacion:
         mensaje = re.sub('[^a-zA-Zа-яА-Я1-9]+', ' ', mensaje)
         mensaje = re.sub(' +',' ', mensaje)
         return mensaje.strip()
+
     def normalizacion(self):
         #Normalización
         self.mensajesTwitter["TWEET"] = self.mensajesTwitter["TWEET"].apply(Determinacion.fNormalizacion())
@@ -50,7 +51,7 @@ class Determinacion:
 
     def eliminacion(self):
         #Carga de StopWords
-        stopWords = stopwords.words('english')
+        self.stopWords = stopwords.words('english')
         #Eliminación de las Stops Words en las distintas frases
         self.mensajesTwitter['TWEET'] = self.mensajesTwitter['TWEET'].apply(lambda mensaje: ' '.join([palabra for palabra in mensaje.split() if palabra not in (stopWords)]))
         print(self.mensajesTwitter.head(10))
@@ -58,13 +59,13 @@ class Determinacion:
 
     def stemming(self):
         #Aplicación de stemming
-        stemmer = SnowballStemmer('english')
+        self.stemmer = SnowballStemmer('english')
         self.mensajesTwitter['TWEET'] = self.mensajesTwitter['TWEET'].apply(lambda mensaje: ' '.join([stemmer.stem(palabra) for palabra in mensaje.split(' ')]))
         print(self.mensajesTwitter.head(10))
 
     def lematizacion(self):
         #Lematización
-        lemmatizer = WordNetLemmatizer()
+        self.lemmatizer = WordNetLemmatizer()
         self.mensajesTwitter['TWEET'] = self.mensajesTwitter['TWEET'].apply(lambda mensaje: ' '.join([lemmatizer.lemmatize(palabra) for palabra in mensaje.split(' ')]))
         print(self.mensajesTwitter.head(10))
 
@@ -72,72 +73,104 @@ class Determinacion:
 
     def aprendizaje(self):
         #Conjunto de aprendizaje y de prueba:
-        X_train, X_test, y_train, y_test = train_test_split(self.mensajesTwitter['TWEET'].values,  self.mensajesTwitter['CREENCIA'].values,test_size=0.2)
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.mensajesTwitter['TWEET'].values,  self.mensajesTwitter['CREENCIA'].values,test_size=0.2)
 
         #Creación de la canalización de aprendizaje
-
-
         etapas_aprendizaje = Pipeline([('frequencia', CountVectorizer()),
                                         ('tfidf', TfidfTransformer()),
                                         ('algoritmo', MultinomialNB())])
 
-
         #Aprendizaje
-        modelo = etapas_aprendizaje.fit(X_train,y_train)
+        self.modelo = etapas_aprendizaje.fit(X_train,y_train)
 
-        print(classification_report(y_test, modelo.predict(X_test), digits=4))
+        print(classification_report(y_test, self.modelo.predict(X_test), digits=4))
 
-    #Frase nueva:
-    frase = "Why should trust scientists with global warming if they didnt know Pluto wasnt a planet"
-    print(frase)
+    def normalizacion2(self,frase):
+        #Frase nueva:
+        frase = "Why should trust scientists with global warming if they didnt know Pluto wasnt a planet"
+        print(frase)
+        #Normalización
+        self.frase = Determinacion.fNormalizacion(frase)
 
-    #Normalización
-    frase = normalizacion(frase)
+    def eliminacion2(self):
+        #Eliminación de las stops words
+        self.frase = ' '.join([palabra for palabra in self.frase.split() if palabra not in (self.stopWords)])
 
-    #Eliminación de las stops words
-    frase = ' '.join([palabra for palabra in frase.split() if palabra not in (stopWords)])
+    def stemming2(self):
+        #Aplicación de stemming
+        self.frase =  ' '.join([self.stemmer.stem(palabra) for palabra in self.frase.split(' ')])
 
-    #Aplicación de stemming
-    frase =  ' '.join([stemmer.stem(palabra) for palabra in frase.split(' ')])
+    def lematizacion2(self):
+        #Lematización
+        self.frase = ' '.join([self.lemmatizer.lemmatize(palabra) for palabra in self.frase.split(' ')])
+        print (self.frase)
 
-    #Lematización
-    frase = ' '.join([lemmatizer.lemmatize(palabra) for palabra in frase.split(' ')])
-    print (frase)
-
-    prediccion = modelo.predict([frase])
-    print(prediccion)
-    if(prediccion[0]==0):
-        print(">> No cree en el calentamiento climático...")
-    else:
-        print(">> Cree en el calentamiento climático...")
-
+    def predecir(self):
+        prediccion = self.modelo.predict([self.frase])
+        print(prediccion)
+        if(prediccion[0]==0):
+            print(">> No cree en el calentamiento climático...")
+        else:
+            print(">> Cree en el calentamiento climático...")
 
 
     #------ Uso de SVM ---
 
     #Definición de la canalización
-
-    etapas_aprendizaje = Pipeline([('frequencia', CountVectorizer()),
+    def aprendizaje2(self):
+        etapas_aprendizaje = Pipeline([('frequencia', CountVectorizer()),
                                         ('tfidf', TfidfTransformer()),
                                         ('algoritmo', svm.SVC(kernel='linear', C=2))])
 
+        #Aprendizaje
+        modelo = etapas_aprendizaje.fit(self.X_train,self.y_train)
+        print(classification_report(self.y_test, modelo.predict(self.X_test), digits=4))
 
-    #Aprendizaje
-    modelo = etapas_aprendizaje.fit(X_train,y_train)
-    print(classification_report(y_test, modelo.predict(X_test), digits=4))
+        #Búsqueda del mejor parámetro C
+        parametrosC = {'algoritmo__C':(1,2,4,5,6,7,8,9,10,11,12)}
 
-    #Búsqueda del mejor parámetro C
-    parametrosC = {'algoritmo__C':(1,2,4,5,6,7,8,9,10,11,12)}
-
-    busquedaCOptimo = GridSearchCV(etapas_aprendizaje, parametrosC,cv=2)
-    busquedaCOptimo.fit(X_train,y_train)
-    print(busquedaCOptimo.best_params_)
+        busquedaCOptimo = GridSearchCV(etapas_aprendizaje, parametrosC,cv=2)
+        busquedaCOptimo.fit(self.X_train,self.y_train)
+        print(busquedaCOptimo.best_params_)
 
 
-    #Parámetro nuevo C=1
-    etapas_aprendizaje = Pipeline([('frequencia', CountVectorizer()),
+        #Parámetro nuevo C=1
+        etapas_aprendizaje = Pipeline([('frequencia', CountVectorizer()),
                                         ('tfidf', TfidfTransformer()),
                                         ('algoritmo', svm.SVC(kernel='linear', C=1))])
 
-    modelo = etapas_aprendizaje.fit(X_train,y_train)
-    print(classification_report(y_test, modelo.predict(X_test), digits=4))
+        modelo = etapas_aprendizaje.fit(self.X_train,self.y_train)
+        print(classification_report(self.y_test, modelo.predict(self.X_test), digits=4))
+
+    @staticmethod
+    def limpieza():
+        Determinacion.cargar()
+        Determinacion.transformacion()
+        Determinacion.fNormalizacion()
+        Determinacion.normalizacion()
+        Determinacion.eliminacion()
+        Determinacion.stemming()
+        Determinacion.lematizacion()
+
+    @staticmethod
+    def entrenamiento():
+        Determinacion.aprendizaje()
+        Determinacion.normalizacion2()
+        Determinacion.eliminacion2()
+        Determinacion.stemming2()
+        Determinacion.lematizacion2()
+
+    @staticmethod
+    def prediccion():
+        Determinacion.predecir()
+        Determinacion.aprendizaje2()
+
+    @staticmethod
+    def ejecutar():
+        Determinacion.limpieza()
+        Determinacion.entrenamiento()
+        Determinacion.prediccion()
+
+
+if __name__=="__main__":
+    Determinacion.ejecutar()
